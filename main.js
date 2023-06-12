@@ -5,6 +5,8 @@
 // 4. error notification;
 // 6. reset state functionality;
 
+const AUTH_TOKEN = `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`;
+
 const searchInput = document.getElementById('search');
 const notification = document.getElementById('notification');
 const profile = document.querySelector('.profile');
@@ -25,34 +27,54 @@ class NotAuthenticatedError extends Error {
     }
 }
 
-
-
 async function getUserByUserName(userName) {
-  if (!userName || userName.length <= MIN_NAME_LENGTH) {
+    let repos;
 
-    return;
-  }
-
-  const response = await fetch(`https://api.github.com/users/${userName}?clientId=CLIENT_ID_HERE&clientSecret=CLIENT_SECRET_HERE`);
-  const body = await response.json();
-
-  if (!response.ok) {
-    if (response.status === 404) {
-        throw new NotFoundError(`User (${userName}) not found. Please, check username!`);
-    }
-    if (response.status === 403) {
-        throw new NotAuthenticatedError(`You are not authenticated to make this request!`);
+    if (!userName || userName.length <= MIN_NAME_LENGTH) {
+        return;
     }
 
-    throw new Error(body.message);
-  }
+    const response = await fetch(`https://api.github.com/users/${userName}`, {
+        headers: { Authorization: `token  ${AUTH_TOKEN}` },
+    });
 
-  return body;
+    const user = await response.json();
+
+    if (!response.ok) {
+        if (response.status === 404) {
+            throw new NotFoundError(
+                `User (${userName}) not found. Please, check username!`
+            );
+        }
+        if (response.status === 403) {
+            throw new NotAuthenticatedError(
+                `You are not authenticated to make this request!`
+            );
+        }
+
+        throw new Error(user.message);
+    }
+
+    if (!user.repos_url) {
+        throw new NotFoundError(`Repositories not found!`);
+    }
+
+    if (user.repos_url) {
+        const userRepos = await fetch(user.repos_url);
+        repos = await userRepos.json();
+    }
+
+    return { user, repos };
 }
 
-function renderProfile(user) {
+function renderProfile(user, repos) {
     if (!user) {
         return;
+    }
+
+    let reps = ``;
+    for (i in repos) {
+        reps += `<li>${repos[i].name}</li>\n`;
     }
 
     profile.innerHTML = `
@@ -73,6 +95,10 @@ function renderProfile(user) {
                 <li>Website/Blog: ${user.blog}</li>
                 <li>Location: ${user.location}</li>
                 <li>Created at: ${user.created_at}</li>
+            </ul>
+            Repositories:
+            <ul>
+            ${reps}
             </ul>
             </div>
         </div>
@@ -96,19 +122,33 @@ function clearResult() {
 async function fetchProfile(e) {
     const value = e.target.value;
 
+    if (value.length <= MIN_NAME_LENGTH) {
+        return;
+    }
+
     if (!value) {
         clearResult();
     }
 
     try {
-        const user = await getUserByUserName(value);
-        renderProfile(user);
-        renderNotification("It looks good! Here is a user's profile", 'alert-success');
+        const { user, repos } = await getUserByUserName(value);
+
+        renderProfile(user, repos);
+        renderNotification(
+            "It looks good! Here is a user's profile",
+            'alert-success'
+        );
     } catch (e) {
         renderNotification(e.message);
         clearResult();
     }
 }
 
+let timer;
+searchInput.addEventListener('keyup', (e) => {
+    clearTimeout(timer);
 
-searchInput.addEventListener('keyup', fetchProfile);
+    timer = setTimeout(() => {
+        fetchProfile(e);
+    }, 500);
+});
