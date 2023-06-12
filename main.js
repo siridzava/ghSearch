@@ -5,7 +5,10 @@
 // 4. error notification;
 // 6. reset state functionality;
 
-const AUTH_TOKEN = `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`;
+// const CLIENT_ID = '311d7fc382f264e68ab8';
+// const CLIENT_SECRET = '599f6931ed1a43d0a09320a9131622a7a8a3e329';
+// const AUTH_TOKEN = `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`;
+const AUTH_TOKEN = `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`;
 
 const searchInput = document.getElementById('search');
 const notification = document.getElementById('notification');
